@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { Types } from "mongoose";
 import { getServerSession } from "next-auth";
-import { CACHE_CONTROL_LIST } from "@/lib/api-cache-headers";
+import { CACHE_CONTROL_PRIVATE_NO_STORE } from "@/lib/api-cache-headers";
 import { authOptions } from "@/lib/auth";
 import { connectDB } from "@/lib/mongoose";
 import { ensureVirtualCardForUser, maskCardNumberLast4 } from "@/lib/virtual-card-utils";
@@ -66,7 +66,7 @@ export async function GET() {
           holderName: user?.name ?? "Cardholder",
         },
       },
-      { headers: { "Cache-Control": CACHE_CONTROL_LIST } },
+      { headers: { "Cache-Control": CACHE_CONTROL_PRIVATE_NO_STORE } },
     );
   } catch {
     return NextResponse.json({ error: "Server error" }, { status: 500 });

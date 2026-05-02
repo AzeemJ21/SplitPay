@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronDown, FileImage, FileText, Loader2, Sparkles } from "lucide-react";
 import Image from "next/image";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -28,6 +28,8 @@ type DisputeDetail = {
   resolution?: string;
   aiSummary?: string;
   createdAt: string;
+  aiUnlockAt?: string;
+  aiAgentReady?: boolean;
 };
 
 function statusBadge(status: string) {
@@ -52,7 +54,6 @@ export default function DisputeDetailPage() {
   const [aiLoading, setAiLoading] = useState(false);
   const [localSummary, setLocalSummary] = useState<string | null>(null);
   const [openSections, setOpenSections] = useState<Record<number, boolean>>({});
-
   useEffect(() => {
     if (!id) return;
     const ac = new AbortController();
@@ -60,7 +61,7 @@ export default function DisputeDetailPage() {
     setError(null);
     (async () => {
       try {
-        const res = await fetch(`/api/disputes/${id}`, { signal: ac.signal });
+        const res = await fetch(`/api/disputes/${id}`, { signal: ac.signal, cache: "no-store" });
         if (!res.ok) {
           setError("Could not load dispute.");
           setDispute(null);
@@ -89,15 +90,24 @@ export default function DisputeDetailPage() {
     }
   }, [summaryText, aiSections.length]);
 
-  const generateSummary = async () => {
+  const generateSummary = useCallback(async () => {
     if (!id) return;
     setAiLoading(true);
     setError(null);
     try {
       const res = await fetch(`/api/disputes/${id}/summarize`, { method: "POST" });
-      const j = (await res.json()) as { summary?: string; error?: string };
+      const j = (await res.json()) as {
+        summary?: string;
+        error?: string;
+        message?: string;
+        availableAt?: string;
+      };
       if (!res.ok) {
-        setError(j.error ?? "Summary failed.");
+        if (j.error === "AI_AGENT_PENDING" && j.message) {
+          setError(`${j.message}${j.availableAt ? ` (${new Date(j.availableAt).toLocaleString()})` : ""}`);
+        } else {
+          setError(j.error ?? j.message ?? "Summary failed.");
+        }
         return;
       }
       if (j.summary) {
@@ -107,7 +117,7 @@ export default function DisputeDetailPage() {
     } finally {
       setAiLoading(false);
     }
-  };
+  }, [id]);
 
   const toggleSection = (i: number) => {
     setOpenSections((prev) => ({ ...prev, [i]: !prev[i] }));
@@ -229,16 +239,33 @@ export default function DisputeDetailPage() {
         )}
       </section>
 
+      {!dispute.aiAgentReady && dispute.aiUnlockAt ? (
+        <section className="rounded-xl border border-amber-500/25 bg-amber-500/5 px-4 py-3 text-sm text-amber-100">
+          <p className="font-medium text-amber-200">AI agent</p>
+          <p className="mt-1 text-amber-100/90">
+            Analysis unlocks <strong>48 hours</strong> after filing. Available after{" "}
+            {new Date(dispute.aiUnlockAt).toLocaleString(undefined, {
+              dateStyle: "medium",
+              timeStyle: "short",
+            })}
+            .
+          </p>
+        </section>
+      ) : null}
+
       <div className="flex flex-wrap gap-3">
         <button
           type="button"
           onClick={() => void generateSummary()}
-          disabled={aiLoading}
+          disabled={aiLoading || !dispute.aiAgentReady}
           className="dash-btn-secondary inline-flex items-center gap-2 px-4 py-2 text-sm disabled:opacity-50"
         >
           {aiLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-          Generate AI summary
+          {dispute.aiSummary || localSummary ? "Regenerate AI analysis" : "Run AI agent"}
         </button>
+        {!dispute.aiAgentReady ? (
+          <span className="self-center text-xs text-text-muted">Unlocks after the 48-hour window.</span>
+        ) : null}
       </div>
 
       {summaryText ? (

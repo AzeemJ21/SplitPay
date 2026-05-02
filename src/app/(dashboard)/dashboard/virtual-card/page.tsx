@@ -93,9 +93,9 @@ export default function VirtualCardPage() {
     setWLoading(true);
     try {
       const [rCard, rTx, rW] = await Promise.all([
-        fetch("/api/virtual-card"),
-        fetch("/api/transactions?type=virtual_card&limit=5"),
-        fetch("/api/withdrawals?limit=20"),
+        fetch("/api/virtual-card", { cache: "no-store" }),
+        fetch("/api/transactions?type=virtual_card&limit=5", { cache: "no-store" }),
+        fetch("/api/withdrawals?limit=20", { cache: "no-store" }),
       ]);
       if (rCard.ok) {
         const j = (await rCard.json()) as {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Check,
   CheckCircle2,
@@ -12,9 +12,12 @@ import {
   Store,
 } from "lucide-react";
 
-const EXAMPLE_BASE = "https://your-domain.com";
+const FALLBACK_BASE = "https://your-domain.com";
 
-const CURL = `curl -X POST ${EXAMPLE_BASE}/api/split-payment \\
+function buildCodeExamples(base: string) {
+  const b = base || FALLBACK_BASE;
+  return {
+    curl: `curl -X POST ${b}/api/split-payment \\
   -H "Authorization: Bearer YOUR_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -33,9 +36,8 @@ const CURL = `curl -X POST ${EXAMPLE_BASE}/api/split-payment \\
       "amount": 99.99
     },
     "merchantId": "store_order_123"
-  }'`;
-
-const JAVASCRIPT = `const res = await fetch("${EXAMPLE_BASE}/api/split-payment", {
+  }'`,
+    javascript: `const res = await fetch("${b}/api/split-payment", {
   method: "POST",
   headers: {
     "Authorization": "Bearer YOUR_API_KEY",
@@ -60,12 +62,11 @@ const JAVASCRIPT = `const res = await fetch("${EXAMPLE_BASE}/api/split-payment",
   }),
 });
 
-const data = await res.json();`;
-
-const PYTHON = `import requests
+const data = await res.json();`,
+    python: `import requests
 
 r = requests.post(
-    "${EXAMPLE_BASE}/api/split-payment",
+    "${b}/api/split-payment",
     headers={
         "Authorization": "Bearer YOUR_API_KEY",
         "Content-Type": "application/json",
@@ -89,7 +90,9 @@ r = requests.post(
     },
 )
 
-print(r.json())`;
+print(r.json())`,
+  };
+}
 
 type Tab = "curl" | "javascript" | "python";
 
@@ -259,6 +262,11 @@ function ApiKeyPanel() {
 
 export default function DashboardApiPage() {
   const [tab, setTab] = useState<Tab>("curl");
+  const [origin, setOrigin] = useState("");
+  useEffect(() => {
+    setOrigin(typeof window !== "undefined" ? window.location.origin : "");
+  }, []);
+  const examples = useMemo(() => buildCodeExamples(origin), [origin]);
 
   return (
     <div className="space-y-12">
@@ -267,6 +275,21 @@ export default function DashboardApiPage() {
         <p className="mt-2 max-w-2xl text-sm text-text-secondary">
           Let your customers split any payment across two cards at checkout
         </p>
+        {origin ? (
+          <p className="mt-2 max-w-2xl text-xs text-text-muted">
+            Examples use this dashboard origin:{" "}
+            <span className="font-mono text-text-secondary">{origin}</span>. Discovery:{" "}
+            <a
+              href={`${origin}/api/integration`}
+              className="text-orange-400 underline hover:text-orange-300"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              GET /api/integration
+            </a>{" "}
+            (JSON for your store env).
+          </p>
+        ) : null}
       </header>
 
       <section className="grid gap-8 lg:grid-cols-2 lg:items-start">
@@ -348,7 +371,10 @@ export default function DashboardApiPage() {
 
       <section>
         <h2 className="font-display text-xl font-semibold text-text-primary">Code integration examples</h2>
-        <p className="mt-1 text-sm text-text-muted">POST /api/split-payment — replace YOUR_API_KEY and domain.</p>
+        <p className="mt-1 text-sm text-text-muted">
+          POST /api/split-payment — replace YOUR_API_KEY. Domain updates automatically when this page is opened on your
+          live dashboard.
+        </p>
 
         <div className="mt-4 flex flex-wrap gap-2 border-b border-border-subtle pb-2">
           {(
@@ -374,9 +400,9 @@ export default function DashboardApiPage() {
         </div>
 
         <div className="mt-4">
-          {tab === "curl" ? <CodeBlock code={CURL} label="cURL example" /> : null}
-          {tab === "javascript" ? <CodeBlock code={JAVASCRIPT} label="JavaScript example" /> : null}
-          {tab === "python" ? <CodeBlock code={PYTHON} label="Python example" /> : null}
+          {tab === "curl" ? <CodeBlock code={examples.curl} label="cURL example" /> : null}
+          {tab === "javascript" ? <CodeBlock code={examples.javascript} label="JavaScript example" /> : null}
+          {tab === "python" ? <CodeBlock code={examples.python} label="Python example" /> : null}
         </div>
       </section>
     </div>

@@ -4,13 +4,12 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ArrowLeftRight,
   Copy,
   CreditCard,
   FolderKanban,
-  Minus,
   Plus,
   ShieldCheck,
 } from "lucide-react";
@@ -103,6 +102,8 @@ export default function DashboardHomePage() {
   const [escrowTotal, setEscrowTotal] = useState<number | null>(null);
   const [pendingMilestones, setPendingMilestones] = useState<number | null>(null);
   const [totalTransacted, setTotalTransacted] = useState<number | null>(null);
+  const [walletBalance, setWalletBalance] = useState<number | null>(null);
+  const [fundedSplitPayVolume, setFundedSplitPayVolume] = useState<number | null>(null);
 
   const [txLoading, setTxLoading] = useState(true);
   const [transactions, setTransactions] = useState<TxRow[]>([]);
@@ -118,21 +119,30 @@ export default function DashboardHomePage() {
     async function loadStats() {
       setStatsLoading(true);
       try {
-        const [rActive, rEscrow, rPending, rSum] = await Promise.all([
-          fetch("/api/projects?status=active&countOnly=true"),
-          fetch("/api/escrow-summary"),
-          fetch("/api/milestones?status=pending&countOnly=true"),
-          fetch("/api/transactions/summary"),
+        const rDash = await fetch("/api/dashboard-stats", { cache: "no-store" });
+        const [rPending] = await Promise.all([
+          fetch("/api/milestones?status=pending&countOnly=true", { cache: "no-store" }),
         ]);
         if (cancelled) return;
-        const jActive = rActive.ok ? await rActive.json() : { meta: { total: 0 } };
-        const jEscrow = rEscrow.ok ? await rEscrow.json() : { data: { totalEscrow: 0 } };
+        const jDash = rDash.ok
+          ? await rDash.json()
+          : {
+              data: {
+                activeProjects: 0,
+                escrowTotal: 0,
+                totalTransacted: 0,
+                walletBalance: 0,
+                fundedSplitPayVolume: 0,
+              },
+            };
         const jPending = rPending.ok ? await rPending.json() : { meta: { total: 0 } };
-        const jSum = rSum.ok ? await rSum.json() : { data: { totalVolume: 0 } };
-        setActiveProjects(jActive.meta?.total ?? 0);
-        setEscrowTotal(jEscrow.data?.totalEscrow ?? 0);
+        const d = jDash.data ?? {};
+        setActiveProjects(d.activeProjects ?? 0);
+        setEscrowTotal(d.escrowTotal ?? 0);
         setPendingMilestones(jPending.meta?.total ?? 0);
-        setTotalTransacted(jSum.data?.totalVolume ?? 0);
+        setTotalTransacted(d.totalTransacted ?? 0);
+        setWalletBalance(d.walletBalance ?? 0);
+        setFundedSplitPayVolume(d.fundedSplitPayVolume ?? 0);
       } finally {
         if (!cancelled) setStatsLoading(false);
       }
@@ -148,7 +158,7 @@ export default function DashboardHomePage() {
     async function loadTx() {
       setTxLoading(true);
       try {
-        const res = await fetch("/api/transactions?limit=5");
+        const res = await fetch("/api/transactions?limit=5", { cache: "no-store" });
         if (!res.ok || cancelled) return;
         const j = (await res.json()) as { data: TxRow[] };
         setTransactions(j.data ?? []);
@@ -167,7 +177,7 @@ export default function DashboardHomePage() {
     async function loadProjects() {
       setProjectsLoading(true);
       try {
-        const res = await fetch("/api/projects?limit=3");
+        const res = await fetch("/api/projects?limit=3", { cache: "no-store" });
         if (!res.ok || cancelled) return;
         const j = (await res.json()) as {
           data: Array<{
@@ -209,22 +219,31 @@ export default function DashboardHomePage() {
   };
 
   const refreshDashboard = async () => {
-    const [rActive, rEscrow, rPending, rSum, rTx, rProj] = await Promise.all([
-      fetch("/api/projects?status=active&countOnly=true"),
-      fetch("/api/escrow-summary"),
-      fetch("/api/milestones?status=pending&countOnly=true"),
-      fetch("/api/transactions/summary"),
-      fetch("/api/transactions?limit=5"),
-      fetch("/api/projects?limit=3"),
+    const [rDash, rPending, rTx, rProj] = await Promise.all([
+      fetch("/api/dashboard-stats", { cache: "no-store" }),
+      fetch("/api/milestones?status=pending&countOnly=true", { cache: "no-store" }),
+      fetch("/api/transactions?limit=5", { cache: "no-store" }),
+      fetch("/api/projects?limit=3", { cache: "no-store" }),
     ]);
-    const jActive = rActive.ok ? await rActive.json() : { meta: { total: 0 } };
-    const jEscrow = rEscrow.ok ? await rEscrow.json() : { data: { totalEscrow: 0 } };
+    const jDash = rDash.ok
+      ? await rDash.json()
+      : {
+          data: {
+            activeProjects: 0,
+            escrowTotal: 0,
+            totalTransacted: 0,
+            walletBalance: 0,
+            fundedSplitPayVolume: 0,
+          },
+        };
     const jPending = rPending.ok ? await rPending.json() : { meta: { total: 0 } };
-    const jSum = rSum.ok ? await rSum.json() : { data: { totalVolume: 0 } };
-    setActiveProjects(jActive.meta?.total ?? 0);
-    setEscrowTotal(jEscrow.data?.totalEscrow ?? 0);
+    const d = jDash.data ?? {};
+    setActiveProjects(d.activeProjects ?? 0);
+    setEscrowTotal(d.escrowTotal ?? 0);
     setPendingMilestones(jPending.meta?.total ?? 0);
-    setTotalTransacted(jSum.data?.totalVolume ?? 0);
+    setTotalTransacted(d.totalTransacted ?? 0);
+    setWalletBalance(d.walletBalance ?? 0);
+    setFundedSplitPayVolume(d.fundedSplitPayVolume ?? 0);
     if (rTx.ok) {
       const jTx = (await rTx.json()) as { data: TxRow[] };
       setTransactions(jTx.data ?? []);
@@ -260,15 +279,6 @@ export default function DashboardHomePage() {
     setHomeToast(msg);
     window.setTimeout(() => setHomeToast(null), 4000);
   };
-
-  const statTrend = useMemo(
-    () => (
-      <span className="flex items-center gap-1 text-xs text-text-muted">
-        <Minus className="h-3 w-3" /> —
-      </span>
-    ),
-    [],
-  );
 
   return (
     <div className="space-y-10">
@@ -323,32 +333,36 @@ export default function DashboardHomePage() {
         ) : (
           <>
             <article className="dash-stat-card p-5 md:p-6">
-              <p className="dash-table-head font-medium">Active Projects</p>
+              <p className="dash-table-head font-medium">Wallet balance</p>
               <p className="mt-2 font-display text-[28px] leading-none text-text-primary">
-                {activeProjects ?? 0}
+                {formatMoney(walletBalance ?? 0)}
               </p>
-              {statTrend}
+              <p className="mt-1 text-xs text-text-muted">Available on your virtual card</p>
             </article>
             <article className="dash-stat-card p-5 md:p-6">
-              <p className="dash-table-head font-medium">Escrow Balance</p>
+              <p className="dash-table-head font-medium">SplitPay store (funded)</p>
+              <p className="mt-2 font-display text-[28px] leading-none text-text-primary">
+                {formatMoney(fundedSplitPayVolume ?? 0)}
+              </p>
+              <p className="mt-1 text-xs text-text-muted">Completed split checkouts</p>
+            </article>
+            <article className="dash-stat-card p-5 md:p-6">
+              <p className="dash-table-head font-medium">Escrow held</p>
               <p className="mt-2 font-display text-[28px] leading-none text-text-primary">
                 {formatMoneyPlain(escrowTotal ?? 0)}
               </p>
-              {statTrend}
+              <p className="mt-1 text-xs text-text-muted">
+                {pendingMilestones ?? 0} milestone{(pendingMilestones ?? 0) === 1 ? "" : "s"} pending
+              </p>
             </article>
             <article className="dash-stat-card p-5 md:p-6">
-              <p className="dash-table-head font-medium">Pending Milestones</p>
+              <p className="dash-table-head font-medium">Active projects</p>
               <p className="mt-2 font-display text-[28px] leading-none text-text-primary">
-                {pendingMilestones ?? 0}
+                {activeProjects ?? 0}
               </p>
-              {statTrend}
-            </article>
-            <article className="dash-stat-card p-5 md:p-6">
-              <p className="dash-table-head font-medium">Total Transacted</p>
-              <p className="mt-2 font-display text-[28px] leading-none text-text-primary">
-                {formatMoney(totalTransacted ?? 0)}
+              <p className="mt-1 text-xs text-text-muted">
+                All volume: {formatMoney(totalTransacted ?? 0)}
               </p>
-              {statTrend}
             </article>
           </>
         )}

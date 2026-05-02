@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { AlertTriangle, Plus } from "lucide-react";
+import { AlertTriangle, Plus, Sparkles } from "lucide-react";
 import { CreateComplaintModal } from "@/components/complaints/CreateComplaintModal";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -17,6 +17,9 @@ type Row = {
   type?: ComplaintType;
   status: string;
   createdAt: string;
+  aiUnlockAt?: string;
+  aiAgentReady?: boolean;
+  hasAiSummary?: boolean;
 };
 
 const TYPE_STYLES: Record<ComplaintType, string> = {
@@ -55,7 +58,7 @@ export default function ComplaintsPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/disputes");
+      const res = await fetch("/api/disputes", { cache: "no-store" });
       if (!res.ok) return;
       const j = (await res.json()) as { data: Row[] };
       setRows(j.data ?? []);
@@ -123,6 +126,25 @@ export default function ComplaintsPage() {
                       <span className={cn("h-2 w-2 rounded-full", statusDot(d.status))} />
                       {statusLabel(d.status)}
                     </span>
+                    {d.hasAiSummary ? (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-300">
+                        <Sparkles className="h-3 w-3" />
+                        AI analysis saved
+                      </span>
+                    ) : d.aiAgentReady ? (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-orange-500/30 bg-orange-500/10 px-2 py-0.5 text-[10px] font-medium text-orange-200">
+                        <Sparkles className="h-3 w-3" />
+                        AI ready — open case
+                      </span>
+                    ) : d.aiUnlockAt ? (
+                      <span className="rounded-full border border-border-subtle bg-bg-card px-2 py-0.5 text-[10px] text-text-muted">
+                        AI agent: unlocks{" "}
+                        {new Date(d.aiUnlockAt).toLocaleString(undefined, {
+                          dateStyle: "medium",
+                          timeStyle: "short",
+                        })}
+                      </span>
+                    ) : null}
                   </div>
                   <h2 className="mt-2 font-display text-lg font-semibold text-text-primary group-hover:text-orange-400">
                     {d.title}

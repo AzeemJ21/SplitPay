@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { z } from "zod";
 import { CACHE_CONTROL_LIST } from "@/lib/api-cache-headers";
 import { authOptions } from "@/lib/auth";
+import { AI_AGENT_RESPONSE_DELAY_MS } from "@/lib/constants";
 import { connectDB } from "@/lib/mongoose";
 import Dispute, { type ComplaintType } from "@/models/Dispute";
 import Notification from "@/models/Notification";
@@ -99,15 +100,22 @@ export async function GET(request: Request) {
 
     const rows = await Dispute.find(filter).sort({ createdAt: -1 }).lean();
 
-    const data = rows.map((d) => ({
-      id: d._id.toString(),
-      projectId: d.projectId.toString(),
-      projectTitle: projectTitleById.get(d.projectId.toString()) ?? "Project",
-      title: d.title,
-      type: (d.type ?? "milestone_dispute") as ComplaintType,
-      status: d.status,
-      createdAt: d.createdAt.toISOString(),
-    }));
+    const data = rows.map((d) => {
+      const created = d.createdAt instanceof Date ? d.createdAt : new Date(d.createdAt);
+      const aiUnlockAt = new Date(created.getTime() + AI_AGENT_RESPONSE_DELAY_MS);
+      return {
+        id: d._id.toString(),
+        projectId: d.projectId.toString(),
+        projectTitle: projectTitleById.get(d.projectId.toString()) ?? "Project",
+        title: d.title,
+        type: (d.type ?? "milestone_dispute") as ComplaintType,
+        status: d.status,
+        createdAt: created.toISOString(),
+        aiUnlockAt: aiUnlockAt.toISOString(),
+        aiAgentReady: Date.now() >= aiUnlockAt.getTime(),
+        hasAiSummary: Boolean(d.aiSummary?.trim()),
+      };
+    });
 
     return NextResponse.json({ data }, { headers: { "Cache-Control": CACHE_CONTROL_LIST } });
   } catch {

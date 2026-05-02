@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { Types } from "mongoose";
 import { getServerSession } from "next-auth";
+import { AI_AGENT_RESPONSE_DELAY_MS } from "@/lib/constants";
 import { CACHE_CONTROL_LIST } from "@/lib/api-cache-headers";
 import { authOptions } from "@/lib/auth";
 import { connectDB } from "@/lib/mongoose";
@@ -54,6 +55,9 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
       raisedById = String(doc.raisedBy);
     }
 
+    const createdAt = doc.createdAt instanceof Date ? doc.createdAt : new Date(doc.createdAt);
+    const aiUnlockAt = new Date(createdAt.getTime() + AI_AGENT_RESPONSE_DELAY_MS);
+
     return NextResponse.json(
       {
         data: {
@@ -74,6 +78,8 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
           aiSummary: doc.aiSummary,
           createdAt: doc.createdAt.toISOString(),
           updatedAt: doc.updatedAt.toISOString(),
+          aiUnlockAt: aiUnlockAt.toISOString(),
+          aiAgentReady: Date.now() >= aiUnlockAt.getTime(),
         },
       },
       { headers: { "Cache-Control": CACHE_CONTROL_LIST } },

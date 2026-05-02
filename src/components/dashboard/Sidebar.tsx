@@ -16,6 +16,7 @@ import {
   ChevronRight,
   Settings,
   ShieldCheck,
+  Wallet,
   Zap,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -37,13 +38,23 @@ export const sidebarNavItems: SidebarNavItem[] = [
   { label: "Escrow Milestones", icon: ShieldCheck, href: "/dashboard/milestones" },
   { label: "SplitPay API", icon: Zap, href: "/dashboard/api" },
   { label: "Virtual Card", icon: CreditCard, href: "/dashboard/virtual-card" },
+  { label: "Wallet", icon: Wallet, href: "/dashboard/wallet" },
   { label: "Transactions", icon: ArrowLeftRight, href: "/dashboard/transactions" },
   { label: "Notifications", icon: Bell, href: "/dashboard/notifications" },
   { label: "Settings", icon: Settings, href: "/dashboard/settings" },
   { label: "Complaints", icon: AlertTriangle, href: "/dashboard/complaints" },
 ];
 
-const mobileTabItems = sidebarNavItems.slice(0, 5);
+const MOBILE_NAV_HREFS = [
+  "/dashboard",
+  "/dashboard/projects",
+  "/dashboard/wallet",
+  "/dashboard/transactions",
+  "/dashboard/virtual-card",
+] as const;
+const mobileTabItems = MOBILE_NAV_HREFS.map((href) => sidebarNavItems.find((i) => i.href === href)).filter(
+  Boolean,
+) as SidebarNavItem[];
 
 function isNavActive(pathname: string, href: string) {
   if (href === "/dashboard") {

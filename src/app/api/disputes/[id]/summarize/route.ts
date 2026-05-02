@@ -2,10 +2,41 @@ import { NextResponse } from "next/server";
 import { Types } from "mongoose";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { AI_AGENT_RESPONSE_DELAY_MS } from "@/lib/constants";
 import { connectDB } from "@/lib/mongoose";
 import Dispute from "@/models/Dispute";
 import Message from "@/models/Message";
 import Project from "@/models/Project";
+
+function buildOfflineSummary(dispute: {
+  title: string;
+  description: string;
+  type?: string;
+  createdAt: Date;
+}) {
+  const t = dispute.type ?? "milestone_dispute";
+  return `
+1. SUMMARY: Automated triage review for "${dispute.title}". The dispute was filed under type ${t.replace(/_/g, " ")}. Review the description and evidence below.
+
+2. TIMELINE: Complaint filed at ${dispute.createdAt.toISOString()}. Follow-up steps may include requesting additional proof from both parties.
+
+3. EVIDENCE ASSESSMENT: Screenshots and attachments should be compared against milestone scope and chat history. Verify dates and deliverables mentioned in the description.
+
+4. RISK INDICATORS: Look for conflicting statements between chat logs and submitted work; unclear scope increases mediation complexity.
+
+5. PRELIMINARY ASSESSMENT: No final ruling — gather responses from client and freelancer before deciding release or refund.
+
+6. RISK SCORE: 5
+
+7. RECOMMENDATION: Keep status under review until both parties submit clarifications. Escalate if payment or fraud patterns emerge.
+
+---
+(Dashboard AI agent — offline template. Add ANTHROPIC_API_KEY on the server for full Claude analysis.)
+
+Description excerpt:
+${dispute.description.slice(0, 1200)}${dispute.description.length > 1200 ? "…" : ""}
+`.trim();
+}
 
 export async function POST(_: Request, { params }: { params: { id: string } }) {
   try {
@@ -17,16 +48,6 @@ export async function POST(_: Request, { params }: { params: { id: string } }) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json(
-        { error: "AI summary is not configured. Set ANTHROPIC_API_KEY." },
-        { status: 503 },
-      );
-    }
-
-    const model = process.env.ANTHROPIC_MODEL ?? "claude-sonnet-4-20250514";
-
     await connectDB();
     const userId = session.user.id;
 
@@ -34,6 +55,23 @@ export async function POST(_: Request, { params }: { params: { id: string } }) {
     if (!dispute) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
+
+    const createdAt =
+      dispute.createdAt instanceof Date ? dispute.createdAt : new Date(dispute.createdAt as string);
+    const unlockAt = new Date(createdAt.getTime() + AI_AGENT_RESPONSE_DELAY_MS);
+    if (Date.now() < unlockAt.getTime()) {
+      return NextResponse.json(
+        {
+          error: "AI_AGENT_PENDING",
+          message: "The AI agent publishes analysis 48 hours after the complaint is filed.",
+          availableAt: unlockAt.toISOString(),
+        },
+        { status: 403 },
+      );
+    }
+
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    const model = process.env.ANTHROPIC_MODEL ?? "claude-sonnet-4-20250514";
 
     const project = await Project.findOne({
       _id: dispute.projectId,
@@ -44,6 +82,20 @@ export async function POST(_: Request, { params }: { params: { id: string } }) {
 
     if (!project) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    if (!apiKey) {
+      const summary = buildOfflineSummary({
+        title: dispute.title,
+        description: dispute.description,
+        type: dispute.type,
+        createdAt,
+      });
+      await Dispute.findByIdAndUpdate(params.id, {
+        aiSummary: summary,
+        status: dispute.status === "open" ? "under_review" : dispute.status,
+      });
+      return NextResponse.json({ summary, source: "offline_template" });
     }
 
     const messages = await Message.find({ projectId: dispute.projectId })
@@ -139,10 +191,10 @@ Be neutral, professional, and base conclusions only on provided evidence.
 
     await Dispute.findByIdAndUpdate(params.id, {
       aiSummary: summary,
-      status: "under_review",
+      status: dispute.status === "open" ? "under_review" : dispute.status,
     });
 
-    return NextResponse.json({ summary });
+    return NextResponse.json({ summary, source: "anthropic" });
   } catch (e) {
     console.error(e);
     return NextResponse.json({ error: "Server error" }, { status: 500 });

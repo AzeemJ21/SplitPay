@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { Types } from "mongoose";
 import { getServerSession } from "next-auth";
 import { z } from "zod";
 import { authOptions } from "@/lib/auth";
@@ -114,6 +115,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid split code" }, { status: 404, headers: storeCorsHeaders() });
     }
     const customerId = customer._id.toString();
+    const customerOid = customer._id as Types.ObjectId;
 
     if (bearer) {
       // merchant call — allowed
@@ -161,7 +163,7 @@ export async function POST(request: Request) {
       );
       const now = new Date();
       await Transaction.create({
-        userId: customerId,
+        userId: customerOid,
         splitCode: customer.splitCode,
         amount: payload.card1.amount,
         card1Amount: payload.card1.amount,
@@ -172,7 +174,7 @@ export async function POST(request: Request) {
         merchantId: payload.merchantId,
       });
       const failedTx = await Transaction.create({
-        userId: customerId,
+        userId: customerOid,
         splitCode: customer.splitCode,
         amount: payload.totalAmount,
         card1Amount: payload.card1.amount,
@@ -184,7 +186,7 @@ export async function POST(request: Request) {
         note: "Card 2 declined after card 1 succeeded",
       });
       await Notification.create({
-        userId: customerId,
+        userId: customerOid,
         type: "payment_failed",
         title: "Split payment failed",
         message: "Payment failed — card 2 declined. Card 1 has been refunded.",
@@ -201,7 +203,7 @@ export async function POST(request: Request) {
     }
 
     await ensureVirtualCardForUser(customerId);
-    const vc = await VirtualCard.findOne({ userId: customer._id });
+    const vc = await VirtualCard.findOne({ userId: customerOid });
     if (!vc) {
       return NextResponse.json({ error: "Virtual card missing" }, { status: 500, headers: storeCorsHeaders() });
     }
@@ -211,7 +213,7 @@ export async function POST(request: Request) {
 
     const now = new Date();
     const splitTx = await Transaction.create({
-      userId: customerId,
+      userId: customerOid,
       splitCode: customer.splitCode,
       amount: payload.totalAmount,
       card1Amount: payload.card1.amount,
@@ -236,7 +238,7 @@ export async function POST(request: Request) {
     await vc.save();
 
     await Transaction.create({
-      userId: customerId,
+      userId: customerOid,
       splitCode: customer.splitCode,
       amount: payload.totalAmount,
       card1Amount: 0,
@@ -248,7 +250,7 @@ export async function POST(request: Request) {
     });
 
     await Notification.create({
-      userId: customerId,
+      userId: customerOid,
       type: "payment_released",
       title: "Payment sent to merchant",
       message: `Payment of $${payload.totalAmount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} processed and transferred to merchant`,
