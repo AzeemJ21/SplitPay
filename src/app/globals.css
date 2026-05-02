@@ -1,0 +1,211 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  /* Base utilities only — avoid @apply of other component classes (breaks Tailwind / PostCSS). */
+  .dash-card {
+    @apply rounded-2xl border border-[#2A2A2A] bg-[#1A1A1A] transition-all duration-200;
+  }
+  .dash-card-interactive {
+    @apply rounded-2xl border border-[#2A2A2A] bg-[#1A1A1A] transition-all duration-200 hover:border-[#333];
+  }
+  .dash-stat-card {
+    @apply rounded-2xl border border-[#2A2A2A] bg-[#1A1A1A] transition-all duration-200 border-t-2 border-t-orange-500/30;
+  }
+  .dash-page-title {
+    @apply font-display font-bold tracking-tight text-text-primary;
+  }
+  .dash-table-head {
+    @apply text-xs uppercase tracking-widest text-[#666];
+  }
+  .dash-label {
+    @apply text-sm text-[#666];
+  }
+  .dash-btn-primary {
+    @apply rounded-lg bg-orange-500 px-5 py-2.5 font-semibold text-black transition-all duration-150 hover:bg-orange-600 active:scale-[0.97];
+  }
+  .dash-btn-secondary {
+    @apply rounded-lg border border-orange-500 px-5 py-2.5 text-orange-500 transition-all duration-150 hover:bg-orange-500/10 active:scale-[0.97];
+  }
+  .dash-btn-ghost {
+    @apply rounded-lg px-4 py-2 text-[#A1A1A1] transition-colors duration-150 hover:bg-[#1A1A1A] hover:text-white;
+  }
+  .dash-btn-danger {
+    @apply rounded-lg border border-red-500/50 px-5 py-2.5 text-red-400 transition-all duration-150 hover:bg-red-500/10 active:scale-[0.97];
+  }
+}
+
+:root {
+  --orange-400: #fb923c;
+  --orange-500: #f97316;
+  --orange-600: #ea580c;
+  --orange-700: #c2410c;
+
+  /* dark mode defaults */
+  --bg-base: #0a0a0a;
+  --bg-surface: #111111;
+  --bg-card: #1a1a1a;
+  --bg-elevated: #222222;
+
+  --border-subtle: #2a2a2a;
+  --border-default: #333333;
+  --border-strong: #444444;
+
+  --text-primary: #ffffff;
+  --text-secondary: #a1a1a1;
+  --text-muted: #666666;
+
+  --background: var(--bg-base);
+  --foreground: var(--text-primary);
+}
+
+html.light {
+  --bg-base: #f5f5f5;
+  --bg-surface: #ffffff;
+  --bg-card: #fafafa;
+  --bg-elevated: #eeeeee;
+
+  --border-subtle: #e5e5e5;
+  --border-default: #d4d4d4;
+  --border-strong: #a3a3a3;
+
+  --text-primary: #0a0a0a;
+  --text-secondary: #555555;
+  --text-muted: #737373;
+
+  --background: var(--bg-base);
+  --foreground: var(--text-primary);
+}
+
+* {
+  border-color: var(--border-default);
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-dm-sans), sans-serif;
+  position: relative;
+  isolation: isolate;
+}
+
+button,
+a {
+  transition: transform 120ms ease;
+}
+
+button:active,
+a:active {
+  transform: scale(0.97);
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  box-shadow: 0 0 0 2px #f9731640;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--orange-500);
+  outline-offset: 2px;
+}
+
+.shimmer-skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--bg-card);
+}
+
+.shimmer-skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    110deg,
+    transparent 25%,
+    rgba(255, 255, 255, 0.08) 40%,
+    transparent 60%
+  );
+  transform: translateX(-100%);
+  animation: shimmer 1.4s infinite;
+}
+
+@keyframes shimmer {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+.toast-success {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 80;
+  border-left: 3px solid var(--orange-500);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  padding: 10px 14px;
+  animation: toast-slide-in 180ms ease-out;
+}
+
+@keyframes toast-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.16;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.4'/%3E%3C/svg%3E");
+  mix-blend-mode: soft-light;
+  z-index: -1;
+}
+
+html.light body::before {
+  opacity: 0.06;
+}
+
+::selection {
+  background-color: var(--orange-500);
+  color: var(--bg-base);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--orange-500) var(--bg-surface);
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: var(--bg-surface);
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: var(--orange-500);
+  border: 2px solid var(--bg-surface);
+  border-radius: 6px;
+}
