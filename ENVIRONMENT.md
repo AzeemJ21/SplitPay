@@ -17,3 +17,10 @@ Optional:
 | `ANTHROPIC_MODEL` | e.g. `claude-sonnet-4-20250514` |
 
 After changing `NEXTAUTH_URL` or `STORE_URL`, redeploy so `next.config` headers and auth URLs stay aligned.
+
+### Render login / “Server Components” errors
+
+- Set **`NEXTAUTH_URL`** to your exact service URL, e.g. `https://splitpay-dashboard.onrender.com` (no trailing slash, must match the browser).
+- Set **`NEXTAUTH_SECRET`** in Render (do not rely on a default).
+- Set **`MONGODB_URI`** and allow **Network Access** in MongoDB Atlas (e.g. `0.0.0.0/0` for testing, or Render egress IPs for production).
+- If the shell loads but data fails, check **Render → Logs** for `[dashboard layout] DB error`.
