@@ -22,20 +22,27 @@ export async function GET(request: Request) {
     endpoints: {
       verifySplitCode: `${base}/api/users/verify-code`,
       splitPayment: `${base}/api/split-payment`,
+      demoStorePurchase: `${base}/api/demo/store-purchase`,
     },
     headers: {
       splitPayment: {
         Authorization: "Bearer <merchant API key from dashboard → API Integration>",
         "Content-Type": "application/json",
       },
+      demoStorePurchase: {
+        "Content-Type": "application/json",
+        "X-Demo-Store-Secret": "<same value as DEMO_STORE_SECRET on dashboard and store>",
+      },
     },
     setup: {
       onDashboard: {
         NEXTAUTH_URL: base,
         STORE_URL: storeOrigin,
+        DEMO_STORE_SECRET: "<generate a shared secret>",
       },
       onStore: {
         SPLITPAY_API_URL: base,
+        DEMO_STORE_SECRET: "<match dashboard DEMO_STORE_SECRET>",
       },
     },
   };
