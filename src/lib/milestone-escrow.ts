@@ -62,11 +62,12 @@ export async function releaseEscrowForMilestone(milestoneId: string): Promise<Le
   }
 
   const freelancerId = project.freelancerId.toString();
+  const freelancerOid = new Types.ObjectId(freelancerId);
   const freelancer = await User.findById(freelancerId).select("splitCode").lean();
   const splitCode = freelancer?.splitCode ?? "0000";
 
   await ensureVirtualCardForUser(freelancerId);
-  await VirtualCard.findOneAndUpdate({ userId: freelancerId }, { $inc: { balance: releaseAmount } });
+  await VirtualCard.findOneAndUpdate({ userId: freelancerOid }, { $inc: { balance: releaseAmount } });
 
   const now = new Date();
   await Milestone.findByIdAndUpdate(milestone._id, {
@@ -77,7 +78,7 @@ export async function releaseEscrowForMilestone(milestoneId: string): Promise<Le
   });
 
   await Transaction.create({
-    userId: freelancerId,
+    userId: freelancerOid,
     splitCode,
     amount: releaseAmount,
     card1Amount: 0,
@@ -85,10 +86,11 @@ export async function releaseEscrowForMilestone(milestoneId: string): Promise<Le
     type: "escrow_release",
     status: "completed",
     date: now,
+    note: "Escrow milestone approved and released to freelancer virtual card balance.",
   });
 
   await Notification.create({
-    userId: freelancerId,
+    userId: freelancerOid,
     type: "payment_released",
     title: "Escrow payment released",
     message: `Payment of $${releaseAmount.toLocaleString("en-US")} released for milestone '${milestone.title}'`,

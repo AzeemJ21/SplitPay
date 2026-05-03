@@ -5,6 +5,8 @@ export const TRANSACTION_TYPES = [
   "escrow_funding",
   "escrow_release",
   "merchant_payout",
+  /** Rolled back a successful card charge when the paired card failed (store split pay). */
+  "charge_reversal",
   "refund",
   "failed_payment",
   /** FYP: simulated virtual-card withdrawal — not real banking */

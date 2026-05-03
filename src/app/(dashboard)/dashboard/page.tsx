@@ -52,6 +52,7 @@ function mapTxTypeLabel(type: string) {
   if (type === "escrow_funding") return "Escrow funding";
   if (type === "escrow_release") return "Escrow release";
   if (type === "merchant_payout") return "Merchant payout";
+  if (type === "charge_reversal") return "Card rollback";
   if (type === "withdrawal") return "Withdrawal";
   if (type === "refund") return "Refund";
   if (type === "failed_payment") return "Failed payment";
@@ -65,6 +66,7 @@ function TxIcon({ type }: { type: string }) {
   if (
     type === "split_payment" ||
     type === "merchant_payout" ||
+    type === "charge_reversal" ||
     type === "refund" ||
     type === "failed_payment"
   ) {

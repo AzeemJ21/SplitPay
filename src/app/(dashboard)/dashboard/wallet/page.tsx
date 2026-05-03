@@ -24,6 +24,7 @@ function typeLabel(t: string) {
   if (t === "split_payment") return "Split payment (store)";
   if (t === "escrow_release") return "Escrow release";
   if (t === "escrow_funding") return "Escrow funding";
+  if (t === "charge_reversal") return "Card charge rollback";
   return t.replace(/_/g, " ");
 }
 
@@ -42,7 +43,7 @@ export default function WalletPage() {
       const [rDash, rTx] = await Promise.all([
         fetch("/api/dashboard-stats", { cache: "no-store" }),
         fetch(
-          "/api/transactions?types=split_payment,escrow_release,escrow_funding&status=completed&limit=50",
+          "/api/transactions?types=split_payment,escrow_release,escrow_funding,charge_reversal&status=completed&limit=50",
           { cache: "no-store" },
         ),
       ]);
@@ -122,8 +123,10 @@ export default function WalletPage() {
       </section>
 
       <section className="rounded-xl border border-border-subtle bg-bg-surface p-5">
-        <h2 className="font-display text-lg font-semibold text-text-primary">Funded activity</h2>
-        <p className="mt-1 text-sm text-text-muted">Split payments and escrow funding/releases.</p>
+        <h2 className="font-display text-lg font-semibold text-text-primary">Wallet &amp; funded activity</h2>
+        <p className="mt-1 text-sm text-text-muted">
+          Split payments, escrow releases to your card, escrow funding, and successful card rollbacks (audit).
+        </p>
         {txLoading ? (
           <div className="mt-6 space-y-3">
             {[1, 2, 3].map((i) => (
@@ -152,7 +155,12 @@ export default function WalletPage() {
                     {tx.merchantId ? ` · ${tx.merchantId}` : ""}
                   </p>
                 </div>
-                <span className="font-display text-lg text-emerald-400">+{formatMoney(tx.amount)}</span>
+                <span
+                  className={`font-display text-lg ${tx.type === "charge_reversal" ? "text-amber-400" : "text-emerald-400"}`}
+                >
+                  {tx.type === "charge_reversal" ? "↩ " : "+"}
+                  {formatMoney(tx.amount)}
+                </span>
               </li>
             ))}
           </ul>

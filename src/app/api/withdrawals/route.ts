@@ -225,9 +225,10 @@ export async function POST(request: Request) {
     }
 
     const withdrawal = await Withdrawal.create(withdrawalPayload);
+    const userOid = new Types.ObjectId(userId);
 
     await Transaction.create({
-      userId,
+      userId: userOid,
       splitCode,
       amount,
       card1Amount: 0,
@@ -243,7 +244,7 @@ export async function POST(request: Request) {
       body.method === "paypal" ? "PayPal" : body.method === "stripe" ? "Stripe" : "Bank transfer";
 
     await Notification.create({
-      userId,
+      userId: userOid,
       type: "withdrawal_submitted",
       title: "Withdrawal requested",
       message: `Withdrawal of $${amount.toFixed(2)} via ${methodLabel} is being processed (simulated).`,

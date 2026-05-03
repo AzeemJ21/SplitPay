@@ -29,6 +29,7 @@ function formatMoney(n: number) {
 function typeLabel(t: string) {
   if (t === "split_payment") return "Split payment";
   if (t === "merchant_payout") return "Merchant payout";
+  if (t === "charge_reversal") return "Card rollback";
   if (t === "refund") return "Refund";
   if (t === "escrow_release") return "Escrow release";
   if (t === "failed_payment") return "Failed payment";

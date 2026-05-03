@@ -50,7 +50,7 @@ export async function POST(_request: Request, { params }: { params: { id: string
     ).lean();
 
     await Transaction.create({
-      userId,
+      userId: new Types.ObjectId(userId),
       splitCode,
       amount: milestone.amount,
       card1Amount: 0,
@@ -63,7 +63,7 @@ export async function POST(_request: Request, { params }: { params: { id: string
     const freelancerId = project.freelancerId?.toString();
     if (freelancerId) {
       await Notification.create({
-        userId: freelancerId,
+        userId: new Types.ObjectId(freelancerId),
         type: "milestone_funded",
         title: "Milestone funded",
         message: `Milestone '${milestone.title}' has been funded and is ready to start`,

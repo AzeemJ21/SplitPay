@@ -27,13 +27,23 @@ export async function GET() {
       return NextResponse.json({ error: "Card not found" }, { status: 404 });
     }
 
-    const [recvRow, paidRow] = await Promise.all([
+    const [recvGross, reversalSum, paidRow] = await Promise.all([
       Transaction.aggregate<{ t: number }>([
         {
           $match: {
             userId: oid,
             status: "completed",
             type: { $in: ["escrow_release", "split_payment"] },
+          },
+        },
+        { $group: { _id: null, t: { $sum: "$amount" } } },
+      ]),
+      Transaction.aggregate<{ t: number }>([
+        {
+          $match: {
+            userId: oid,
+            status: "completed",
+            type: "charge_reversal",
           },
         },
         { $group: { _id: null, t: { $sum: "$amount" } } },
@@ -50,6 +60,10 @@ export async function GET() {
       ]),
     ]);
 
+    const gross = recvGross[0]?.t ?? 0;
+    const rev = reversalSum[0]?.t ?? 0;
+    const totalReceived = Math.max(0, gross - rev);
+
     return NextResponse.json(
       {
         data: {
@@ -61,7 +75,7 @@ export async function GET() {
             createdAt: card.createdAt,
           },
           balance: card.balance,
-          totalReceived: recvRow[0]?.t ?? 0,
+          totalReceived,
           totalPaidOut: paidRow[0]?.t ?? 0,
           holderName: user?.name ?? "Cardholder",
         },

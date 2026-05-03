@@ -67,6 +67,7 @@ export async function GET(request: Request) {
       "merchant_payout",
       "refund",
       "escrow_release",
+      "charge_reversal",
       "failed_payment",
       "withdrawal",
     ];

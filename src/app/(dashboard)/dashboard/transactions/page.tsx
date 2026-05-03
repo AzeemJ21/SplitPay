@@ -38,6 +38,7 @@ const TYPE_OPTIONS = [
   { value: "split_payment", label: "Split Payment" },
   { value: "escrow_funding", label: "Escrow" },
   { value: "escrow_release", label: "Release" },
+  { value: "charge_reversal", label: "Card rollback" },
   { value: "refund", label: "Refund" },
   { value: "failed_payment", label: "Failed" },
   { value: "withdrawal", label: "Withdrawal" },
@@ -48,6 +49,7 @@ function typeBadgeClass(type: string) {
     return "border-orange-500/40 bg-orange-500/15 text-orange-300";
   if (type === "escrow_funding") return "border-blue-500/40 bg-blue-500/15 text-blue-300";
   if (type === "escrow_release") return "border-emerald-500/40 bg-emerald-500/15 text-emerald-300";
+  if (type === "charge_reversal") return "border-amber-500/40 bg-amber-500/15 text-amber-200";
   if (type === "failed_payment" || type === "refund")
     return "border-red-500/40 bg-red-500/15 text-red-300";
   return "border-border-default bg-bg-card text-text-secondary";
@@ -76,6 +78,7 @@ function signedAmount(tx: Tx): number {
   if (tx.type === "merchant_payout") return -Math.abs(tx.amount);
   if (tx.type === "withdrawal") return -Math.abs(tx.amount);
   if (tx.type === "refund") return -Math.abs(tx.amount);
+  if (tx.type === "charge_reversal") return -Math.abs(tx.amount);
   if (tx.status === "failed" || tx.type === "failed_payment") return -Math.abs(tx.amount);
   return Math.abs(tx.amount);
 }
