@@ -2,6 +2,8 @@
 
 Web application for **SplitPay** users: projects, escrow milestones, virtual card, wallet, transactions, notifications, and complaints. It also exposes **HTTP APIs** used by the **SplitPay Store** for split checkout (verify split code + charge two cards).
 
+**Live storefront (Render):** [https://splitpay-store.onrender.com](https://splitpay-store.onrender.com) — set dashboard `STORE_URL` to this origin (no trailing slash) so CORS allows store → dashboard API calls.
+
 ## Quick start
 
 ```bash

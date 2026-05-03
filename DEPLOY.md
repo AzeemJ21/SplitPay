@@ -27,10 +27,10 @@ Separate repo/service from the **splitpay-store** storefront. Deploy the dashboa
 
 1. After the first deploy, copy the service URL, e.g. `https://splitpay-6kcl.onrender.com`.
 2. Set `NEXTAUTH_URL` to that URL (exact `https` host, no path).
-3. Set `STORE_URL` to your **store** URL once the store is deployed (CORS for `/api/users/verify-code` and `/api/split-payment`).
-4. On the **store** service, set `SPLITPAY_API_URL` to the dashboard base URL (same as `NEXTAUTH_URL`).
-4. In MongoDB Atlas, allow **Network Access** from `0.0.0.0/0` (or Render’s egress IPs if you lock it down).
-5. Redeploy the dashboard after env changes.
+3. Set `STORE_URL` to the live store origin **`https://splitpay-store.onrender.com`** (CORS for `/api/users/verify-code` and `/api/split-payment`).
+4. On the **store** service (`splitpay-store` on Render), set `SPLITPAY_API_URL` to the dashboard base URL (same as `NEXTAUTH_URL`).
+5. In MongoDB Atlas, allow **Network Access** from `0.0.0.0/0` (or Render’s egress IPs if you lock it down).
+6. Redeploy the dashboard after env changes.
 
 ## Health check
 

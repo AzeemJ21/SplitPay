@@ -13,6 +13,9 @@ export async function GET(request: Request) {
     process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ||
     requestOrigin;
 
+  const storeOrigin =
+    process.env.STORE_URL?.replace(/\/$/, "") || "https://splitpay-store.onrender.com";
+
   const body = {
     name: "SplitPay Dashboard",
     baseUrl: base,
@@ -29,7 +32,7 @@ export async function GET(request: Request) {
     setup: {
       onDashboard: {
         NEXTAUTH_URL: base,
-        STORE_URL: "<your store origin, e.g. https://splitpay-store.onrender.com — no trailing slash>",
+        STORE_URL: storeOrigin,
       },
       onStore: {
         SPLITPAY_API_URL: base,

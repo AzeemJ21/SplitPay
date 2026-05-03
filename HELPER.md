@@ -232,7 +232,7 @@ See **`.env.example`** and **`ENVIRONMENT.md`** for the full list. Critical ones
 | `MONGODB_URI` | MongoDB connection string. |
 | `NEXTAUTH_SECRET` | Sign JWT cookies. |
 | `NEXTAUTH_URL` | Public base URL of **this** app (must match browser origin in production). |
-| `STORE_URL` | Storefront origin for **CORS** on store-facing APIs (no trailing slash). |
+| `STORE_URL` | Live store: **`https://splitpay-store.onrender.com`** — CORS on store-facing APIs (no trailing slash). |
 | `ANTHROPIC_API_KEY` | Optional; full Claude dispute analysis. |
 
 ---
