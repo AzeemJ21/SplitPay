@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { Types } from "mongoose";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { connectDB } from "@/lib/mongoose";
@@ -11,7 +12,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     await connectDB();
-    const userId = session.user.id;
+    const userOid = new Types.ObjectId(session.user.id);
 
     const url = new URL(request.url);
     const limitRaw = url.searchParams.get("limit");
@@ -19,11 +20,11 @@ export async function GET(request: Request) {
       limitRaw != null ? Math.min(Math.max(parseInt(limitRaw, 10) || 0, 1), 200) : undefined;
 
     const [notifications, unreadCount] = await Promise.all([
-      Notification.find({ userId })
+      Notification.find({ userId: userOid })
         .sort({ createdAt: -1 })
         .limit(limit ?? 100)
         .lean(),
-      Notification.countDocuments({ userId, read: false }),
+      Notification.countDocuments({ userId: userOid, read: false }),
     ]);
 
     return NextResponse.json({

@@ -88,10 +88,12 @@ export default function VirtualCardPage() {
   const [wLoading, setWLoading] = useState(true);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setTxLoading(true);
-    setWLoading(true);
+  const load = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) {
+      setLoading(true);
+      setTxLoading(true);
+      setWLoading(true);
+    }
     try {
       const [rCard, rTx, rW] = await Promise.all([
         fetch("/api/virtual-card", { cache: "no-store" }),
@@ -123,14 +125,23 @@ export default function VirtualCardPage() {
         setWithdrawals(j.data ?? []);
       }
     } finally {
-      setLoading(false);
-      setTxLoading(false);
-      setWLoading(false);
+      if (!opts?.silent) {
+        setLoading(false);
+        setTxLoading(false);
+        setWLoading(false);
+      }
     }
   }, []);
 
   useEffect(() => {
     void load();
+  }, [load]);
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      if (document.visibilityState === "visible") void load({ silent: true });
+    }, 10_000);
+    return () => window.clearInterval(id);
   }, [load]);
 
   const expStr =

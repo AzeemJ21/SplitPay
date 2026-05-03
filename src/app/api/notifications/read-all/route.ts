@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { Types } from "mongoose";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { connectDB } from "@/lib/mongoose";
@@ -11,9 +12,10 @@ export async function PUT() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     await connectDB();
+    const userOid = new Types.ObjectId(session.user.id);
 
     const result = await Notification.updateMany(
-      { userId: session.user.id, read: false },
+      { userId: userOid, read: false },
       { $set: { read: true } },
     );
 

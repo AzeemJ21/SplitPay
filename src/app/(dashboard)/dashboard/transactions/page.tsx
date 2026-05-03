@@ -160,27 +160,34 @@ export default function TransactionsHistoryPage() {
 
   const filtersActive = useMemo(() => q.trim().length > 0 || typeFilter !== "", [q, typeFilter]);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true);
     try {
       const params = new URLSearchParams();
       params.set("page", String(page));
       params.set("limit", String(limit));
       if (deferredQ.trim()) params.set("q", deferredQ.trim());
       if (typeFilter) params.set("type", typeFilter);
-      const res = await fetch(`/api/transactions?${params.toString()}`);
+      const res = await fetch(`/api/transactions?${params.toString()}`, { cache: "no-store" });
       if (!res.ok) return;
       const j = (await res.json()) as { data: Tx[]; meta: Meta };
       setRows(j.data ?? []);
       setMeta(j.meta ?? null);
       setPageInput(String(j.meta?.page ?? page));
     } finally {
-      setLoading(false);
+      if (!opts?.silent) setLoading(false);
     }
   }, [page, deferredQ, typeFilter]);
 
   useEffect(() => {
     void load();
+  }, [load]);
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      if (document.visibilityState === "visible") void load({ silent: true });
+    }, 10_000);
+    return () => window.clearInterval(id);
   }, [load]);
 
   const onExport = async () => {

@@ -15,9 +15,10 @@ export async function PUT(_request: Request, { params }: { params: { id: string 
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
     await connectDB();
+    const userOid = new Types.ObjectId(session.user.id);
 
     const updated = await Notification.findOneAndUpdate(
-      { _id: params.id, userId: session.user.id },
+      { _id: params.id, userId: userOid },
       { $set: { read: true } },
       { new: true },
     ).lean();

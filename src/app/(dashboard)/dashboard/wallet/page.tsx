@@ -36,9 +36,11 @@ export default function WalletPage() {
   const [txLoading, setTxLoading] = useState(true);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setTxLoading(true);
+  const load = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) {
+      setLoading(true);
+      setTxLoading(true);
+    }
     try {
       const [rDash, rTx] = await Promise.all([
         fetch("/api/dashboard-stats", { cache: "no-store" }),
@@ -59,13 +61,22 @@ export default function WalletPage() {
         setRows(j.data ?? []);
       }
     } finally {
-      setLoading(false);
-      setTxLoading(false);
+      if (!opts?.silent) {
+        setLoading(false);
+        setTxLoading(false);
+      }
     }
   }, []);
 
   useEffect(() => {
     void load();
+  }, [load]);
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      if (document.visibilityState === "visible") void load({ silent: true });
+    }, 10_000);
+    return () => window.clearInterval(id);
   }, [load]);
 
   return (

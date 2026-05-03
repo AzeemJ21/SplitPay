@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Bell } from "lucide-react";
 
-const POLL_MS = 60_000;
+/** Poll so store checkout notifications show soon after payment (no page refresh). */
+const POLL_MS = 8_000;
 
 export function DashboardTopbar() {
   const [unreadCount, setUnreadCount] = useState(0);
@@ -13,7 +14,7 @@ export function DashboardTopbar() {
     let cancelled = false;
     async function fetchUnread() {
       try {
-        const res = await fetch("/api/notifications?limit=1");
+        const res = await fetch("/api/notifications?limit=1", { cache: "no-store" });
         if (!res.ok || cancelled) return;
         const j = (await res.json()) as { unreadCount?: number };
         setUnreadCount(typeof j.unreadCount === "number" ? j.unreadCount : 0);
@@ -22,10 +23,17 @@ export function DashboardTopbar() {
       }
     }
     void fetchUnread();
-    const id = window.setInterval(() => void fetchUnread(), POLL_MS);
+    const id = window.setInterval(() => {
+      if (document.visibilityState === "visible") void fetchUnread();
+    }, POLL_MS);
+    const onVis = () => {
+      if (document.visibilityState === "visible") void fetchUnread();
+    };
+    document.addEventListener("visibilitychange", onVis);
     return () => {
       cancelled = true;
       window.clearInterval(id);
+      document.removeEventListener("visibilitychange", onVis);
     };
   }, []);
 

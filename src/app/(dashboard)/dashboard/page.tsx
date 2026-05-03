@@ -174,6 +174,45 @@ export default function DashboardHomePage() {
     };
   }, []);
 
+  /** After store checkout, refresh recent activity + stats without reloading the page. */
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      void (async () => {
+        try {
+          const [rDash, rTx] = await Promise.all([
+            fetch("/api/dashboard-stats", { cache: "no-store" }),
+            fetch("/api/transactions?limit=5", { cache: "no-store" }),
+          ]);
+          if (rTx.ok) {
+            const j = (await rTx.json()) as { data: TxRow[] };
+            setTransactions(j.data ?? []);
+          }
+          if (rDash.ok) {
+            const jDash = (await rDash.json()) as {
+              data?: {
+                activeProjects?: number;
+                escrowTotal?: number;
+                totalTransacted?: number;
+                walletBalance?: number;
+                fundedSplitPayVolume?: number;
+              };
+            };
+            const d = jDash.data ?? {};
+            setActiveProjects(d.activeProjects ?? 0);
+            setEscrowTotal(d.escrowTotal ?? 0);
+            setTotalTransacted(d.totalTransacted ?? 0);
+            setWalletBalance(d.walletBalance ?? 0);
+            setFundedSplitPayVolume(d.fundedSplitPayVolume ?? 0);
+          }
+        } catch {
+          /* ignore */
+        }
+      })();
+    }, 10_000);
+    return () => window.clearInterval(id);
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     async function loadProjects() {

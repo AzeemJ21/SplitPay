@@ -150,7 +150,7 @@ export async function POST(request: Request) {
     const c1Res = await processCardCharge(card1Details, payload.card1.amount, cardChargeOpts);
     if (!c1Res.success) {
       const now = new Date();
-      await Transaction.create({
+      const failedCard1Tx = await Transaction.create({
         userId: customerOid,
         splitCode: customer.splitCode,
         amount: payload.totalAmount,
@@ -162,12 +162,17 @@ export async function POST(request: Request) {
         merchantId: payload.merchantId,
         note: "Card 1 declined at checkout (split pay)",
       });
+      const amt = payload.totalAmount.toLocaleString("en-US", {
+        style: "currency",
+        currency: "USD",
+      });
       await Notification.create({
         userId: customerOid,
         type: "payment_failed",
-        title: "Split payment failed",
-        message: "Card 1 was declined — no charges completed.",
+        title: "Store checkout failed",
+        message: `Your SplitPay store purchase (${amt}) did not go through — card 1 was declined. Nothing was charged.`,
         read: false,
+        relatedId: failedCard1Tx._id,
       });
       return NextResponse.json(
         { error: "CARD1_DECLINED", message: "Card 1 charge failed" },
@@ -210,13 +215,17 @@ export async function POST(request: Request) {
           : "Split checkout failed — card 2 declined; card 1 reversal incomplete.",
       });
 
+      const amt = payload.totalAmount.toLocaleString("en-US", {
+        style: "currency",
+        currency: "USD",
+      });
       await Notification.create({
         userId: customerOid,
         type: "payment_failed",
-        title: "Split payment failed",
+        title: "Store checkout failed",
         message: revRes.success
-          ? "Payment failed — card 2 declined. Card 1 has been rolled back."
-          : "Payment failed — card 2 declined and card 1 rollback failed. Contact support.",
+          ? `Your SplitPay store purchase (${amt}) failed — card 2 was declined. Card 1 was rolled back automatically.`
+          : `Your SplitPay store purchase (${amt}) failed — card 2 declined and card 1 rollback failed. Contact support.`,
         read: false,
         relatedId: failedTx._id,
       });
@@ -270,7 +279,7 @@ export async function POST(request: Request) {
           "Split pay invalidated: merchant payout simulation failed after virtual card credit — balance restored on card.",
       });
 
-      await Transaction.create({
+      const refundLedgerTx = await Transaction.create({
         userId: customerOid,
         splitCode: customer.splitCode,
         amount: payload.totalAmount,
@@ -296,14 +305,17 @@ export async function POST(request: Request) {
         note: `Simulated merchant payout failed (${payout.transactionId}).`,
       });
 
+      const amt = payload.totalAmount.toLocaleString("en-US", {
+        style: "currency",
+        currency: "USD",
+      });
       await Notification.create({
         userId: customerOid,
         type: "payment_failed",
-        title: "Split payment settlement failed",
-        message:
-          "Both cards were charged and your virtual card was credited, but merchant payout failed. Your balance was restored.",
+        title: "Store checkout settlement failed",
+        message: `Both cards were charged for ${amt} and your virtual card was credited, but merchant payout failed. Your card balance was restored — see Transactions.`,
         read: false,
-        relatedId: splitTxDoc._id,
+        relatedId: refundLedgerTx._id,
       });
 
       return NextResponse.json(
@@ -315,7 +327,7 @@ export async function POST(request: Request) {
     vc.balance -= payload.totalAmount;
     await vc.save();
 
-    await Transaction.create({
+    const merchantTx = await Transaction.create({
       userId: customerOid,
       splitCode: customer.splitCode,
       amount: payload.totalAmount,
@@ -328,13 +340,18 @@ export async function POST(request: Request) {
       note: `Merchant settlement from virtual card (${payout.transactionId}).`,
     });
 
+    const amtOk = payload.totalAmount.toLocaleString("en-US", {
+      style: "currency",
+      currency: "USD",
+    });
+    const orderPart = payload.merchantId ? ` Order / ref: ${payload.merchantId}.` : "";
     await Notification.create({
       userId: customerOid,
       type: "payment_released",
-      title: "Payment sent to merchant",
-      message: `Payment of $${payload.totalAmount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} processed and transferred to merchant`,
+      title: "Store purchase successful",
+      message: `Your SplitPay store checkout for ${amtOk} completed. Both cards were charged, funds moved through your virtual card, and the merchant was paid.${orderPart} See Transactions for the full log.`,
       read: false,
-      relatedId: splitTxDoc._id,
+      relatedId: merchantTx._id,
     });
 
     if (bearer && merchantUser) {

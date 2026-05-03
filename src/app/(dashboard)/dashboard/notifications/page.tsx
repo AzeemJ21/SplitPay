@@ -83,20 +83,27 @@ export default function NotificationsPage() {
   const [rows, setRows] = useState<NotificationRow[]>([]);
   const [markingAll, setMarkingAll] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true);
     try {
-      const res = await fetch("/api/notifications");
+      const res = await fetch("/api/notifications", { cache: "no-store" });
       if (!res.ok) return;
       const j = (await res.json()) as { data: NotificationRow[] };
       setRows(j.data ?? []);
     } finally {
-      setLoading(false);
+      if (!opts?.silent) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
     void load();
+  }, [load]);
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      if (document.visibilityState === "visible") void load({ silent: true });
+    }, 8_000);
+    return () => window.clearInterval(id);
   }, [load]);
 
   const markAllRead = async () => {
