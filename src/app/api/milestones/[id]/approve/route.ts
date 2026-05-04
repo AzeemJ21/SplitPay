@@ -7,7 +7,7 @@ import Milestone from "@/models/Milestone";
 import Project from "@/models/Project";
 import { releaseEscrowForMilestone } from "@/lib/milestone-escrow";
 
-export async function POST(_request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, { params }: { params: { id: string } }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
@@ -17,6 +17,16 @@ export async function POST(_request: Request, { params }: { params: { id: string
     const userId = session.user.id;
     if (!Types.ObjectId.isValid(params.id)) {
       return NextResponse.json({ error: "Milestone not found" }, { status: 404 });
+    }
+
+    let instant = false;
+    try {
+      const raw = (await request.json()) as { instant?: unknown };
+      if (raw && typeof raw === "object" && "instant" in raw) {
+        instant = Boolean(raw.instant);
+      }
+    } catch {
+      /* empty or non-JSON body */
     }
 
     const milestone = await Milestone.findById(params.id).lean();
@@ -29,12 +39,20 @@ export async function POST(_request: Request, { params }: { params: { id: string
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    if (milestone.status !== "submitted") {
+    const st = milestone.status as string;
+    if (instant) {
+      if (!["funded", "in_progress", "submitted"].includes(st)) {
+        return NextResponse.json(
+          { error: "Instant release is only available while escrow is funded, in progress, or submitted." },
+          { status: 400 },
+        );
+      }
+    } else if (st !== "submitted") {
       return NextResponse.json({ error: "Milestone is not awaiting approval." }, { status: 400 });
     }
 
     try {
-      const released = await releaseEscrowForMilestone(params.id);
+      const released = await releaseEscrowForMilestone(params.id, { instant });
       return NextResponse.json({
         data: {
           ...released,

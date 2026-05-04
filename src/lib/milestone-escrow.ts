@@ -34,10 +34,21 @@ type LeanMilestone = {
   autoReleaseAt?: Date;
 };
 
+export type ReleaseEscrowOptions = {
+  /** Client may release while funded or in progress without waiting for work submission (demo / expedited). */
+  instant?: boolean;
+};
+
+const INSTANT_RELEASE_STATUSES = new Set(["funded", "in_progress", "submitted"]);
+
 /**
- * Releases escrow for a milestone in `submitted` state (manual approve or cron).
+ * Releases escrow for a milestone (normally `submitted` after freelancer delivers).
+ * With `{ instant: true }`, client may release from `funded`, `in_progress`, or `submitted`.
  */
-export async function releaseEscrowForMilestone(milestoneId: string): Promise<LeanMilestone> {
+export async function releaseEscrowForMilestone(
+  milestoneId: string,
+  options?: ReleaseEscrowOptions,
+): Promise<LeanMilestone> {
   await connectDB();
   if (!Types.ObjectId.isValid(milestoneId)) {
     throw Object.assign(new Error("invalid_milestone_id"), { code: "invalid_milestone_id" });
@@ -47,7 +58,11 @@ export async function releaseEscrowForMilestone(milestoneId: string): Promise<Le
   if (!milestone) {
     throw Object.assign(new Error("not_found"), { code: "not_found" });
   }
-  if (milestone.status !== "submitted") {
+  const instant = options?.instant === true;
+  const ok =
+    milestone.status === "submitted" ||
+    (instant && INSTANT_RELEASE_STATUSES.has(milestone.status as string));
+  if (!ok) {
     throw Object.assign(new Error("invalid_status"), { code: "invalid_status" });
   }
 
@@ -77,6 +92,10 @@ export async function releaseEscrowForMilestone(milestoneId: string): Promise<Le
     approvedAt: now,
   });
 
+  const releaseNote = instant
+    ? "Instant escrow release (client). Funds credited to freelancer virtual card."
+    : "Escrow milestone approved and released to freelancer virtual card balance.";
+
   await Transaction.create({
     userId: freelancerOid,
     splitCode,
@@ -86,7 +105,7 @@ export async function releaseEscrowForMilestone(milestoneId: string): Promise<Le
     type: "escrow_release",
     status: "completed",
     date: now,
-    note: "Escrow milestone approved and released to freelancer virtual card balance.",
+    note: releaseNote,
   });
 
   await Notification.create({
@@ -109,7 +128,7 @@ export async function releaseEscrowForMilestone(milestoneId: string): Promise<Le
 
 export async function tryReleaseEscrowForMilestone(milestoneId: string): Promise<boolean> {
   try {
-    await releaseEscrowForMilestone(milestoneId);
+    await releaseEscrowForMilestone(milestoneId, undefined);
     return true;
   } catch {
     return false;

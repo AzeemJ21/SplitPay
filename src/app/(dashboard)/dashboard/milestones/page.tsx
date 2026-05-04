@@ -71,6 +71,33 @@ function tabToFilter(tab: Tab): MilestoneStatus | "all" {
   return map[tab as Exclude<Tab, "All">];
 }
 
+/** Client-facing description of where escrow / payout stands. */
+function paymentStatusLabel(m: ApiMilestone): string {
+  const escrow = m.escrowAmount ?? 0;
+  switch (m.status) {
+    case "pending":
+      return "Not funded — fund the milestone to hold payment in escrow.";
+    case "funded":
+      return escrow > 0
+        ? "Escrow active — payment held until you release or the freelancer completes work."
+        : "Funded — no escrow balance.";
+    case "in_progress":
+      return escrow > 0
+        ? "Escrow active — freelancer is working; you can release anytime or wait for submission."
+        : "In progress.";
+    case "submitted":
+      return escrow > 0
+        ? "Awaiting you — review work and release, or release immediately."
+        : "Submitted.";
+    case "approved":
+      return "Approved — processing release.";
+    case "released":
+      return "Paid out — escrow released to the freelancer.";
+    default:
+      return "—";
+  }
+}
+
 export default function EscrowMilestonesPage() {
   const { data: session } = useSession();
   const router = useRouter();
@@ -127,13 +154,18 @@ export default function EscrowMilestonesPage() {
     router.refresh();
   };
 
-  const approveRelease = async (m: ApiMilestone) => {
-    const res = await fetch(`/api/milestones/${m.id}/approve`, { method: "POST" });
+  const approveRelease = async (m: ApiMilestone, instant: boolean) => {
+    const res = await fetch(`/api/milestones/${m.id}/approve`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ instant }),
+    });
     if (!res.ok) {
-      showToast("Approval failed.");
+      const j = (await res.json().catch(() => ({}))) as { error?: string };
+      showToast(j.error ?? "Release failed.");
       return;
     }
-    showToast("Funds released to freelancer.");
+    showToast(instant ? "Payment released immediately." : "Funds released to freelancer.");
     void load();
     router.refresh();
   };
@@ -222,6 +254,13 @@ export default function EscrowMilestonesPage() {
                   </p>
                 ) : null}
 
+                {isClient(m) ? (
+                  <div className="mt-3 rounded-lg border border-border-subtle bg-bg-elevated/60 px-3 py-2">
+                    <p className="text-xs font-medium uppercase tracking-wide text-text-muted">Payment status</p>
+                    <p className="mt-1 text-sm text-text-secondary">{paymentStatusLabel(m)}</p>
+                  </div>
+                ) : null}
+
                 <div className="mt-4 flex flex-wrap items-center gap-2">
                   {m.status === "pending" && isClient(m) && (
                     <button
@@ -259,14 +298,26 @@ export default function EscrowMilestonesPage() {
                     </button>
                   )}
 
+                  {isClient(m) &&
+                    (m.status === "funded" || m.status === "in_progress") &&
+                    (m.escrowAmount ?? 0) > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => void approveRelease(m, true)}
+                        className="rounded-md border border-emerald-500/50 bg-emerald-500/15 px-4 py-2 text-sm font-semibold text-emerald-200 hover:bg-emerald-500/25"
+                      >
+                        Release payment now
+                      </button>
+                    )}
+
                   {m.status === "submitted" && isClient(m) && (
                     <>
                       <button
                         type="button"
-                        onClick={() => void approveRelease(m)}
+                        onClick={() => void approveRelease(m, false)}
                         className="rounded-md border border-green-500/40 bg-green-500/15 px-4 py-2 text-sm font-semibold text-green-300 hover:bg-green-500/25"
                       >
-                        Approve & Release
+                        Approve &amp; release
                       </button>
                       {m.autoReleaseAt ? (
                         <div className="w-full text-sm">
