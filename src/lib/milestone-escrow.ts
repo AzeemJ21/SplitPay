@@ -82,7 +82,15 @@ export async function releaseEscrowForMilestone(
   const splitCode = freelancer?.splitCode ?? "0000";
 
   await ensureVirtualCardForUser(freelancerId);
-  await VirtualCard.findOneAndUpdate({ userId: freelancerOid }, { $inc: { balance: releaseAmount } });
+  // Match VirtualCard by string userId (same as ensureVirtualCardForUser / dashboard-stats); verify update.
+  const vcUpdated = await VirtualCard.findOneAndUpdate(
+    { userId: freelancerId },
+    { $inc: { balance: releaseAmount } },
+    { new: true },
+  ).lean();
+  if (!vcUpdated) {
+    throw Object.assign(new Error("virtual_card_update_failed"), { code: "virtual_card_update_failed" });
+  }
 
   const now = new Date();
   await Milestone.findByIdAndUpdate(milestone._id, {

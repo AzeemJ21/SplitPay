@@ -71,6 +71,12 @@ export async function POST(request: Request, { params }: { params: { id: string 
       if (code === "invalid_status" || code === "nothing_to_release") {
         return NextResponse.json({ error: "Cannot release this milestone." }, { status: 400 });
       }
+      if (code === "virtual_card_update_failed") {
+        return NextResponse.json(
+          { error: "Could not credit wallet — virtual card update failed." },
+          { status: 500 },
+        );
+      }
       return NextResponse.json({ error: "Release failed" }, { status: 500 });
     }
   } catch {

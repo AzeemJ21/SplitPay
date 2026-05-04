@@ -50,7 +50,7 @@ export async function GET() {
         { $match: { userId: userOid, status: "completed", type: "split_payment" } },
         { $group: { _id: null, v: { $sum: "$amount" } } },
       ]),
-      VirtualCard.findOne({ userId: userOid }).select("balance").lean(),
+      VirtualCard.findOne({ userId: uid }).select("balance").lean(),
     ]);
 
     const totalEscrow = escrowMilestones.reduce((s, m) => s + (m.escrowAmount ?? 0), 0);
