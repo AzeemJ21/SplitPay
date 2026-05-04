@@ -49,6 +49,10 @@ export async function POST(_request: Request, { params }: { params: { id: string
       { new: true },
     ).lean();
 
+    if (project.status === "pending") {
+      await Project.findByIdAndUpdate(project._id, { status: "active" });
+    }
+
     await Transaction.create({
       userId: new Types.ObjectId(userId),
       splitCode,

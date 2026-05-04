@@ -6,6 +6,7 @@ export const dynamic = "force-dynamic";
 import { CACHE_CONTROL_PRIVATE_NO_STORE } from "@/lib/api-cache-headers";
 import { authOptions } from "@/lib/auth";
 import { connectDB } from "@/lib/mongoose";
+import { ensureVirtualCardForUser } from "@/lib/virtual-card-utils";
 import Milestone from "@/models/Milestone";
 import Project from "@/models/Project";
 import Transaction from "@/models/Transaction";
@@ -23,9 +24,14 @@ export async function GET() {
     const userOid = new Types.ObjectId(uid);
 
     const projectFilter = { $or: [{ clientId: uid }, { freelancerId: uid }] };
+    /** New projects start as `pending` until work begins — count open work, not only enum `active`. */
+    const openProjectsFilter = {
+      ...projectFilter,
+      status: { $in: ["pending", "active"] as const },
+    };
 
     const [activeProjects, projectsForEscrow] = await Promise.all([
-      Project.countDocuments({ ...projectFilter, status: "active" }),
+      Project.countDocuments(openProjectsFilter),
       Project.find(projectFilter).select("_id").lean(),
     ]);
     const projectIds = projectsForEscrow.map((p) => p._id);
@@ -43,14 +49,31 @@ export async function GET() {
         ? Milestone.countDocuments({ projectId: { $in: projectIds }, status: "pending" })
         : Promise.resolve(0),
       Transaction.aggregate<{ v: number }>([
-        { $match: { userId: userOid, status: "completed" } },
+        {
+          $match: {
+            status: "completed",
+            $or: [{ userId: userOid }, { userId: uid }],
+          },
+        },
         { $group: { _id: null, v: { $sum: "$amount" } } },
       ]),
       Transaction.aggregate<{ v: number }>([
-        { $match: { userId: userOid, status: "completed", type: "split_payment" } },
+        {
+          $match: {
+            status: "completed",
+            type: "split_payment",
+            $or: [{ userId: userOid }, { userId: uid }],
+          },
+        },
         { $group: { _id: null, v: { $sum: "$amount" } } },
       ]),
-      VirtualCard.findOne({ userId: uid }).select("balance").lean(),
+      (async () => {
+        await ensureVirtualCardForUser(uid);
+        const oid = Types.ObjectId.isValid(uid) ? new Types.ObjectId(uid) : null;
+        const q =
+          oid != null ? { $or: [{ userId: uid }, { userId: oid }] } : { userId: uid };
+        return VirtualCard.findOne(q).select("balance").lean();
+      })(),
     ]);
 
     const totalEscrow = escrowMilestones.reduce((s, m) => s + (m.escrowAmount ?? 0), 0);

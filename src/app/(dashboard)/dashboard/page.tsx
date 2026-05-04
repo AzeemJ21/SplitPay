@@ -397,12 +397,12 @@ export default function DashboardHomePage() {
               </p>
             </article>
             <article className="dash-stat-card p-5 md:p-6">
-              <p className="dash-table-head font-medium">Active projects</p>
+              <p className="dash-table-head font-medium">Open projects</p>
               <p className="mt-2 font-display text-[28px] leading-none text-text-primary">
                 {activeProjects ?? 0}
               </p>
               <p className="mt-1 text-xs text-text-muted">
-                All volume: {formatMoney(totalTransacted ?? 0)}
+                Pending or active (not completed). All volume: {formatMoney(totalTransacted ?? 0)}
               </p>
             </article>
           </>
